@@ -21,3 +21,8 @@ std::vector<MyProduct> MyProduct::readFromFile(std::ifstream& in)
 		else vecItem.push_back(myProductItem);
 	}
 }
+
+void MyProduct::find(int choose, int substringSearch)
+{
+	return;
+}
