@@ -22,7 +22,9 @@ std::vector<MyProduct> MyProduct::readFromFile(std::ifstream& in)
 	}
 }
 
-void MyProduct::find(int choose, int substringSearch)
+std::ostream& operator<<(std::ostream& out, MyProduct* myProduct)
 {
-	return;
+	out << myProduct->number << " | " << myProduct->category << " | " << myProduct->subcategory2 << " | " << myProduct->subcategory3 << " | "
+		<< myProduct->vendorCode << " | " << myProduct->name << " | " << myProduct->price << " | " << myProduct->quantity;
+	return out;
 }
