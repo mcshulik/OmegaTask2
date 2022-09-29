@@ -21,216 +21,380 @@ int calcSearchTime(SYSTEMTIME timeBefore, SYSTEMTIME timeAfter)
 	return timeAfter.wMilliseconds + timeAfter.wSecond * 1000 + timeAfter.wMinute * 1000 * 60;
 }
 
-void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[10], int substringSearch, std::vector<std::string> keys)
+void findBorders(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBorder, std::string key, int field)
 {
-
-
-	// функция поиска пока что работает только для поиска по 1 любому полю и только по полному совпадению строки
-	
-
-	//int fieldNumber = 0;
-	std::vector<MyProduct> foundObjects;
-	char key[255];
-	strcpy_s(key, keys[0].c_str());
-	bool ProducAvailability = false;
-	int l = 0, r = vecPtrs[0].size(), mid, quantityOfProducts = 0;
-	while (l < r)
+	char keyChar[255];
+	strcpy_s(keyChar, key.c_str());
+	int mid = 0, left = leftBorder, right = rightBorder;
+	while (leftBorder < rightBorder)
 	{
-		mid = (l + r) / 2;
-		switch (fields[0])
+		mid = (leftBorder + rightBorder) / 2;
+		switch (field)
 		{
-		case 0:
-		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->number, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->number, key) >= 0)
-				r = mid - 1;
-			else
-				if (strcmp(vecPtrs[fields[0]][mid]->number, key) < 0)
-					l = mid + 1;
-			break;
-		}
 		case 1:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->category, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->category, key) >= 0)
-				r = mid - 1;
+			if (atoi(vecPtr[mid]->number) >= atoi(keyChar))
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->category, key) < 0)
-					l = mid + 1;
+				if (atoi(vecPtr[mid]->number) < atoi(keyChar))
+					leftBorder = mid + 1;
 			break;
 		}
 		case 2:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->subcategory2, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->subcategory2, key) >= 0)
-				r = mid - 1;
+			if (strcmp(vecPtr[mid]->category, keyChar) >= 0)
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->subcategory2, key) < 0)
-					l = mid + 1;
+				if (strcmp(vecPtr[mid]->category, keyChar) < 0)
+					leftBorder = mid + 1;
 			break;
 		}
 		case 3:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->subcategory3, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->subcategory3, key) >= 0)
-				r = mid - 1;
+			if (strcmp(vecPtr[mid]->subcategory2, keyChar) >= 0)
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->subcategory3, key) < 0)
-					l = mid + 1;
+				if (strcmp(vecPtr[mid]->subcategory2, keyChar) < 0)
+					leftBorder = mid + 1;
 			break;
 		}
 		case 4:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->vendorCode, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->vendorCode, key) >= 0)
-				r = mid - 1;
+			if (strcmp(vecPtr[mid]->subcategory3, keyChar) >= 0)
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->vendorCode, key) < 0)
-					l = mid + 1;
+				if (strcmp(vecPtr[mid]->subcategory3, keyChar) < 0)
+					leftBorder = mid + 1;
 			break;
 		}
 		case 5:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->name, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->name, key) >= 0)
-				r = mid - 1;
+			if (atoi(vecPtr[mid]->vendorCode) >= atoi(keyChar))
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->name, key) < 0)
-					l = mid + 1;
+				if (atoi(vecPtr[mid]->vendorCode) < atoi(keyChar))
+					leftBorder = mid + 1;
 			break;
 		}
 		case 6:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->price, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->price, key) >= 0)
-				r = mid - 1;
+			if (strcmp(vecPtr[mid]->name, keyChar) >= 0)
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->price, key) < 0)
-					l = mid + 1;
+				if (strcmp(vecPtr[mid]->name, keyChar) < 0)
+					leftBorder = mid + 1;
 			break;
 		}
 		case 7:
 		{
-			if (!strcmp(vecPtrs[fields[0]][mid]->quantity, key))
-				ProducAvailability = true;
-			if (strcmp(vecPtrs[fields[0]][mid]->quantity, key) >= 0)
-				r = mid - 1;
+			if (atof(vecPtr[mid]->price) >= atof(keyChar))
+				rightBorder = mid - 1;
 			else
-				if (strcmp(vecPtrs[fields[0]][mid]->quantity, key) < 0)
-					l = mid + 1;
+				if (atof(vecPtr[mid]->price) < atof(keyChar))
+					leftBorder = mid + 1;
+			break;
+		}
+		case 8:
+		{
+			if (atoi(vecPtr[mid]->quantity) >= atoi(keyChar))
+				rightBorder = mid - 1;
+			else
+				if (atoi(vecPtr[mid]->quantity) < atoi(keyChar))
+					leftBorder = mid + 1;
 			break;
 		}
 		}
 	}
-	std::cout << "----------------------------------------------------------" << std::endl;
-	if (!ProducAvailability)
-		std::cout << "No matching properties found" << std::endl;
-	else
+
+	switch (field)
 	{
-		while (true)
+	case 1:
+	{
+		if (atoi(vecPtr[mid]->number) < atoi(keyChar))
+			leftBorder++;
+		break;
+	}
+	case 2:
+	{
+		if (strcmp(vecPtr[mid]->category, keyChar) < 0)
+			leftBorder++;
+		break;
+	}
+	case 3:
+	{
+		if (strcmp(vecPtr[mid]->subcategory2, keyChar) < 0)
+			leftBorder++;
+		break;
+	}
+	case 4:
+	{
+		if (strcmp(vecPtr[mid]->subcategory3, keyChar) < 0)
+			leftBorder++;
+		break;
+	}
+	case 5:
+	{
+		if (atoi(vecPtr[mid]->vendorCode) < atoi(keyChar))
+			leftBorder++;
+		break;
+	}
+	case 6:
+	{
+		if (strcmp(vecPtr[mid]->name, keyChar) < 0)
+			leftBorder++;
+		break;
+	}
+	case 7:
+	{
+		if (atof(vecPtr[mid]->price) < atof(keyChar))
+			leftBorder++;
+		break;
+	}
+	case 8:
+	{
+		if (atoi(vecPtr[mid]->quantity) < atoi(keyChar))
+			leftBorder++;
+		break;
+	}
+	}
+
+	mid = (left + right) / 2;
+	left = leftBorder;
+	leftBorder = 0;
+	rightBorder = vecPtr.size();
+
+	while (leftBorder < rightBorder)
+	{
+		mid = (leftBorder + rightBorder) / 2;
+		switch (field)
 		{
-			if (fields[0] == 0)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->number, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 1)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->category, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 2)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->subcategory2, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 3)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->subcategory3, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 4)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->vendorCode, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 5)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->name, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 6)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->price, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (fields[0] == 7)
-			{
-				if (!strcmp(vecPtrs[fields[0]][l]->quantity, key))
-				{
-					quantityOfProducts++;
-					std::cout << vecPtrs[fields[0]][l] << std::endl;
-					l++;
-				}
-				else
-					break;
-			}
-			if (quantityOfProducts == 10)
-			{
-				std::cout << "Only 10 products are displayed, the list is not complete!" << std::endl;
-				break;
-			}
+		case 1:
+		{
+			if (atoi(vecPtr[mid]->number) > atoi(keyChar))
+				rightBorder = mid - 1;
+			else
+				if (atoi(vecPtr[mid]->number) <= atoi(keyChar))
+					leftBorder = mid + 1;
+			break;
+		}
+		case 2:
+		{
+			if (strcmp(vecPtr[mid]->category, keyChar) > 0)
+				rightBorder = mid - 1;
+			else
+				if (strcmp(vecPtr[mid]->category, keyChar) <= 0)
+					leftBorder = mid + 1;
+			break;
+		}
+		case 3:
+		{
+			if (strcmp(vecPtr[mid]->subcategory2, keyChar) > 0)
+				rightBorder = mid - 1;
+			else
+				if (strcmp(vecPtr[mid]->subcategory2, keyChar) <= 0)
+					leftBorder = mid + 1;
+			break;
+		}
+		case 4:
+		{
+			if (strcmp(vecPtr[mid]->subcategory3, keyChar) > 0)
+				rightBorder = mid - 1;
+			else
+				if (strcmp(vecPtr[mid]->subcategory3, keyChar) <= 0)
+					leftBorder = mid + 1;
+			break;
+		}
+		case 5:
+		{
+			if (atoi(vecPtr[mid]->vendorCode) > atoi(keyChar))
+				rightBorder = mid - 1;
+			else
+				if (atoi(vecPtr[mid]->vendorCode) <= atoi(keyChar))
+					leftBorder = mid + 1;
+			break;
+		}
+		case 6:
+		{
+			if (strcmp(vecPtr[mid]->name, keyChar) > 0)
+				rightBorder = mid - 1;
+			else
+				if (strcmp(vecPtr[mid]->name, keyChar) <= 0)
+					leftBorder = mid + 1;
+			break;
+		}
+		case 7:
+		{
+			if (atof(vecPtr[mid]->price) > atof(keyChar))
+				rightBorder = mid - 1;
+			else
+				if (atof(vecPtr[mid]->price)<= atof(keyChar))
+					leftBorder = mid + 1;
+			break;
+		}
+		case 8:
+		{
+			if (atoi(vecPtr[mid]->quantity) > atoi(keyChar))
+				rightBorder = mid - 1;
+			else
+				if (atoi(vecPtr[mid]->quantity) <= atoi(keyChar))
+					leftBorder = mid + 1;
+			break;
+		}
 		}
 	}
+	leftBorder = left;
+	return;
+}
+
+void mySort(std::vector<MyProduct*> &vecPtr, int fieldNumber)
+{
+	switch (fieldNumber)
+	{
+	case 1:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		break;
+	}
+	case 2:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->category, b->category) < 0; });
+		break;
+	}
+	case 3:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory2, b->subcategory2) < 0; });
+		break;
+	}
+	case 4:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory3, b->subcategory3) < 0; });
+		break;
+	}
+	case 5:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->vendorCode) < atoi(b->vendorCode); });
+		break;
+	}
+	case 6:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->name, b->name) < 0; });
+		break;
+	}
+	case 7:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atof(a->price) < atof(b->price); });
+		break;
+	}
+	case 8:
+	{
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->quantity) < atoi(b->quantity); });
+		break;
+	}
+	}
+}
+
+bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> keys)
+{
+	for (int i = 0; i < 8; i++)
+	{
+		if (i == 0 && (fields[0] == 1 || fields[0] == 5 || fields[0] == 7 || fields[0] == 8))
+			i++;
+		if (!fields[i])
+			return true;
+		switch (fields[i])
+		{
+		case 1:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->number, tempKey))
+				return false;
+			break;
+		}
+		case 2:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->category, tempKey))
+				return false;
+			break;
+		}
+		case 3:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->subcategory2, tempKey))
+				return false;
+			break;
+		}
+		case 4:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->subcategory3, tempKey))
+				return false;
+			break;
+		}
+		case 5:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->vendorCode, tempKey))
+				return false;
+			break;
+		}
+		case 6:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->name, tempKey))
+				return false;
+			break;
+		}
+		case 7:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->price, tempKey))
+				return false;
+			break;
+		}
+		case 8:
+		{
+			char tempKey[255];
+			strcpy_s(tempKey, keys[i].c_str());
+			if (strcmp(productItem->quantity, tempKey))
+				return false;
+			break;
+		}
+		}
+	}
+	return false;
+}
+
+void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vector<std::string> keys)
+{
+
+	std::vector<MyProduct> foundObjects;
+	char key[255];
+	strcpy_s(key, keys[0].c_str());
+	int left = 0, right = vecPtrs[0].size(), quantityOfProducts = 0;
+	if (fields[0] == 1 || fields[0] == 5 || fields[0] == 7 || fields[0] == 8)
+		findBorders(vecPtrs[fields[0] - 1], left, right, keys[0], fields[0]);
+	std::cout << "----------------------------------------------------------" << std::endl;
+	for (int i = left; i <= right; i++)
+	{
+		if (myCompare(vecPtrs[fields[0] - 1][i], fields, keys))
+		{
+			quantityOfProducts++;
+			std::cout << vecPtrs[fields[0] - 1][i] << std::endl;
+		}
+	}
+	if (!quantityOfProducts)
+		std::cout << "No matching properties found" << std::endl;
+	else
+		if (quantityOfProducts == 10)
+			std::cout << "Only 10 products are displayed, the list is not complete!" << std::endl;
 	std::cout << "----------------------------------------------------------" << std::endl;
 }
 
@@ -247,8 +411,12 @@ int main()
 	}
 	std::vector<MyProduct> vecObjects = MyProduct::readFromFile(in);
 
+	if(!vecObjects.size())
+	{
+		std::cout << "Error: file wasn't read!" << std::endl;
+		return 0;
+	}
 	std::vector<std::vector<MyProduct*>> vecPtrs;
-	//std::sort(vecObjects.begin(), vecObjects.end(), [](MyProduct a, MyProduct b) {return atoi(a.number) > atoi(b.number); });
 	std::vector<MyProduct*> vecPtr;
 	for (unsigned int i = 0; i < vecObjects.size(); i++)
 	{
@@ -256,18 +424,12 @@ int main()
 		vecPtr.push_back(temp);
 	}
 	for (int i = 0; i < 8; i++)
+	{
 		vecPtrs.push_back(vecPtr);
-	std::sort(vecPtrs[0].begin(), vecPtrs[0].end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
-	std::sort(vecPtrs[1].begin(), vecPtrs[1].end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->category, b->category) < 0; });
-	std::sort(vecPtrs[2].begin(), vecPtrs[2].end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory2, b->subcategory2) < 0; });
-	std::sort(vecPtrs[3].begin(), vecPtrs[3].end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory3, b->subcategory3) < 0; });
-	std::sort(vecPtrs[4].begin(), vecPtrs[4].end(), [](MyProduct* a, MyProduct* b) {return atoi(a->vendorCode) < atoi(b->vendorCode); });
-	std::sort(vecPtrs[5].begin(), vecPtrs[5].end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->name, b->name) < 0; });
-	std::sort(vecPtrs[6].begin(), vecPtrs[6].end(), [](MyProduct* a, MyProduct* b) {return atof(a->price) < atof(b->price); });
-	std::sort(vecPtrs[7].begin(), vecPtrs[7].end(), [](MyProduct* a, MyProduct* b) {return atoi(a->quantity) < atoi(b->quantity); });
+		mySort(vecPtrs[i], i + 1);
+	}
 
-
-	int choose = 9, substringSearch = 3, fieldsQuantity = 1, fields[8];
+	int fieldNumber = 9, fieldsQuantity = 1, fields[8];
 	for (int i = 0; i < 8; i++)
 		fields[i] = 0;
 	std::vector <std::string> keys;
@@ -277,6 +439,7 @@ int main()
 		std::cin >> fieldsQuantity;
 		if (!std::cin)
 		{
+			std::cin.clear();
 			std::cin.clear();
 			std::cin.ignore(INT_MAX, '\n');
 			fieldsQuantity = 1;
@@ -296,44 +459,54 @@ int main()
 			std::cout << "6 - name" << std::endl;
 			std::cout << "7 - price" << std::endl;
 			std::cout << "8 - quantity" << std::endl;
-			std::cin >> choose;
+			std::cin >> fieldNumber;
 			if (!std::cin)
 			{
 				std::cin.clear();
 				std::cin.ignore(INT_MAX, '\n');
-				choose = 9;
+				fieldNumber = 9;
 				continue;
 			}
-			if (!choose)
+			if (!fieldNumber)
 				break;
-			if (choose > 0 && choose < 9)
+			if (fieldNumber > 0 && fieldNumber < 9)
 			{
-				while (substringSearch > 2 || substringSearch < 1)
-				{
-					std::cout << "1 - string search" << std::endl;
-					std::cout << "2 - substring search" << std::endl;
-					std::cin >> substringSearch;
-					if (!std::cin)
-					{
-						std::cin.clear();
-						std::cin.ignore(INT_MAX, '\n');
-					}
-				}
 				std::cin.clear();
 				std::cin.ignore(INT_MAX, '\n');
 				char keyChar[255];
-				std::cout << "Enter (sub)string" << std::endl;
+				std::cout << "Enter substring" << std::endl;
 				std::cin.getline(keyChar, 255, '\n');
 				std::string key = std::string(keyChar);
 				keys.push_back(key);
 			}
-			fields[i] = choose - 1;
+			fields[i] = fieldNumber;
+			if (fieldNumber == 1 || fieldNumber == 5 || fieldNumber == 7 || fieldNumber == 8)
+			{
+				for (int i2 = 0; i2 < 8; i2++)
+				{
+					if (!fields[i2])
+						break;
+					if ((fields[i2] >= 2 && fields[i2] <= 4) || fields[i2] == 6)
+					{
+						fields[i] = fields[i2];
+						fields[i2] = fieldNumber;
+						std::string tempString;
+						tempString = keys[i];
+						keys[i] = keys[i2];
+						keys[i2] = tempString;
+						break;
+					}
+				}
+			}
 		}
 		GetLocalTime(&timeBefore);
-		find(vecPtrs, fields, substringSearch, keys);
+		find(vecPtrs, fields, keys);
 		GetLocalTime(&timeAfter);
-		keys.clear();
 		std::cout << "Search time in ms: " << calcSearchTime(timeBefore, timeAfter) << std::endl;
+		keys.clear();
+		for (int i = 0; i < 8; i++)
+			fields[i] = 0;
 	}
 	in.close();
 }
+
