@@ -1,6 +1,28 @@
 ﻿#include <windows.h>
 #include <algorithm>
 #include "myProduct.h"
+//#include <thread>
+
+std::vector<MyProduct*> foundObjects;
+
+struct structForThread
+{
+	int index = 0;
+	bool stop = false;
+	std::vector<MyProduct*> foundObjects;
+};
+
+
+//DWORD threadFunc(int &i)
+DWORD WINAPI threadFunc(LPVOID i)
+{
+	while (!(*(structForThread*)i).stop)
+	{
+
+	}
+
+	return 0;
+}
 
 int calcSearchTime(SYSTEMTIME timeBefore, SYSTEMTIME timeAfter)
 {
@@ -106,58 +128,6 @@ void findBorders(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBord
 		}
 	}
 
-	switch (field)
-	{
-	case 1:
-	{
-		if (atoi(vecPtr[mid]->number) < atoi(keyChar))
-			leftBorder++;
-		break;
-	}
-	case 2:
-	{
-		if (strcmp(vecPtr[mid]->category, keyChar) < 0)
-			leftBorder++;
-		break;
-	}
-	case 3:
-	{
-		if (strcmp(vecPtr[mid]->subcategory2, keyChar) < 0)
-			leftBorder++;
-		break;
-	}
-	case 4:
-	{
-		if (strcmp(vecPtr[mid]->subcategory3, keyChar) < 0)
-			leftBorder++;
-		break;
-	}
-	case 5:
-	{
-		if (atoi(vecPtr[mid]->vendorCode) < atoi(keyChar))
-			leftBorder++;
-		break;
-	}
-	case 6:
-	{
-		if (strcmp(vecPtr[mid]->name, keyChar) < 0)
-			leftBorder++;
-		break;
-	}
-	case 7:
-	{
-		if (atof(vecPtr[mid]->price) < atof(keyChar))
-			leftBorder++;
-		break;
-	}
-	case 8:
-	{
-		if (atoi(vecPtr[mid]->quantity) < atoi(keyChar))
-			leftBorder++;
-		break;
-	}
-	}
-
 	mid = (left + right) / 2;
 	left = leftBorder;
 	leftBorder = 0;
@@ -257,17 +227,17 @@ void mySort(std::vector<MyProduct*> &vecPtr, int fieldNumber)
 	}
 	case 2:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->category, b->category) < 0; });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
 		break;
 	}
 	case 3:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory2, b->subcategory2) < 0; });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
 		break;
 	}
 	case 4:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->subcategory3, b->subcategory3) < 0; });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
 		break;
 	}
 	case 5:
@@ -277,7 +247,7 @@ void mySort(std::vector<MyProduct*> &vecPtr, int fieldNumber)
 	}
 	case 6:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return strcmp(a->name, b->name) < 0; });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
 		break;
 	}
 	case 7:
@@ -297,8 +267,6 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 {
 	for (int i = 0; i < 8; i++)
 	{
-		if (i == 0 && (fields[0] == 1 || fields[0] == 5 || fields[0] == 7 || fields[0] == 8))
-			i++;
 		if (!fields[i])
 			return true;
 		switch (fields[i])
@@ -374,7 +342,6 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 
 void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vector<std::string> keys)
 {
-
 	std::vector<MyProduct> foundObjects;
 	char key[255];
 	strcpy_s(key, keys[0].c_str());
@@ -389,11 +356,13 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 			quantityOfProducts++;
 			std::cout << vecPtrs[fields[0] - 1][i] << std::endl;
 		}
+		if (quantityOfProducts >= 10)
+			break;
 	}
 	if (!quantityOfProducts)
 		std::cout << "No matching properties found" << std::endl;
 	else
-		if (quantityOfProducts == 10)
+		if (quantityOfProducts >= 10)
 			std::cout << "Only 10 products are displayed, the list is not complete!" << std::endl;
 	std::cout << "----------------------------------------------------------" << std::endl;
 }
@@ -402,6 +371,14 @@ int main()
 {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
+	structForThread myStruct;
+	std::vector<HANDLE> handleVec;
+	HANDLE hThread;
+	DWORD myThreadID;
+	myStruct.stop = true;
+	hThread = CreateThread(0, 0, threadFunc, &myStruct, 0, &myThreadID);
+	if(hThread)
+		CloseHandle(hThread);
 	SYSTEMTIME timeBefore, timeAfter;
 	std::ifstream in("Catalog.csv");
 	if (!in.is_open())
@@ -509,4 +486,3 @@ int main()
 	}
 	in.close();
 }
-
