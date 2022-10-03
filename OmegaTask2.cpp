@@ -1,28 +1,19 @@
 ﻿#include <windows.h>
 #include <algorithm>
 #include "myProduct.h"
-//#include <thread>
+#include <mutex>
 
 std::vector<MyProduct*> foundObjects;
+bool performFunction = false;
+std::mutex myMutex;
 
 struct structForThread
 {
-	int index = 0;
-	bool stop = false;
-	std::vector<MyProduct*> foundObjects;
+	std::vector<std::string> keys;
+	int index = 0, fields[8], left = 0, right = 0;
+	bool stopThread = false;
+	std::vector<MyProduct*> objectsForFound;
 };
-
-
-//DWORD threadFunc(int &i)
-DWORD WINAPI threadFunc(LPVOID i)
-{
-	while (!(*(structForThread*)i).stop)
-	{
-
-	}
-
-	return 0;
-}
 
 int calcSearchTime(SYSTEMTIME timeBefore, SYSTEMTIME timeAfter)
 {
@@ -340,31 +331,83 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 	return false;
 }
 
-void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vector<std::string> keys)
+void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vector<std::string> keys, structForThread &myStruct)
 {
-	std::vector<MyProduct> foundObjects;
 	char key[255];
 	strcpy_s(key, keys[0].c_str());
 	int left = 0, right = vecPtrs[0].size(), quantityOfProducts = 0;
 	if (fields[0] == 1 || fields[0] == 5 || fields[0] == 7 || fields[0] == 8)
 		findBorders(vecPtrs[fields[0] - 1], left, right, keys[0], fields[0]);
 	std::cout << "----------------------------------------------------------" << std::endl;
-	for (int i = left; i <= right; i++)
+	myStruct.objectsForFound = vecPtrs[fields[0] - 1];
+	myStruct.left = left;
+	myStruct.right = right;
+	myStruct.keys = keys;
+	for(int i = 0; i < 8; i++)
+		myStruct.fields[i] = fields[i];
+	performFunction = true;
+	for (int i = left; i <= right; i += 4)
 	{
 		if (myCompare(vecPtrs[fields[0] - 1][i], fields, keys))
 		{
-			quantityOfProducts++;
-			std::cout << vecPtrs[fields[0] - 1][i] << std::endl;
+			myMutex.lock();
+			foundObjects.push_back(vecPtrs[fields[0] - 1][i]);
+			myMutex.unlock();
 		}
-		if (quantityOfProducts >= 10)
+		myMutex.lock();
+		if (foundObjects.size() >= 10)
+		{
+			performFunction = false;
+			myMutex.unlock();
 			break;
+		}
+		myMutex.unlock();
 	}
-	if (!quantityOfProducts)
-		std::cout << "No matching properties found" << std::endl;
-	else
-		if (quantityOfProducts >= 10)
+	Sleep(200);
+	performFunction = false;
+	for (unsigned int i = 0; i < foundObjects.size(); i++)
+	{
+		std::cout << foundObjects[i] << std::endl;
+		if (i >= 9)
+		{
 			std::cout << "Only 10 products are displayed, the list is not complete!" << std::endl;
+			break;
+		}
+	}
+	if (!foundObjects.size())
+		std::cout << "No matching properties found" << std::endl;
 	std::cout << "----------------------------------------------------------" << std::endl;
+	foundObjects.clear();
+}
+
+DWORD WINAPI threadFunc(LPVOID myStruct)
+{
+	int index = (*(structForThread*)myStruct).index;
+	structForThread myStructCopy = *(structForThread*)myStruct;
+	while (!(*(structForThread*)myStruct).stopThread)
+	{
+		if (performFunction && foundObjects.size() == 0)
+		{
+			for (int i = (*(structForThread*)myStruct).left + index; i <= (*(structForThread*)myStruct).right; i += 4)
+			{
+				if (myCompare((*(structForThread*)myStruct).objectsForFound[i], (*(structForThread*)myStruct).fields, (*(structForThread*)myStruct).keys))
+				{
+					myMutex.lock();
+					foundObjects.push_back((*(structForThread*)myStruct).objectsForFound[i]);
+					myMutex.unlock();
+				}
+				myMutex.lock();
+				if (foundObjects.size() >= 10)
+				{
+					performFunction = false;
+					myMutex.unlock();
+					break;
+				}
+				myMutex.unlock();
+			}
+		}
+	}
+	return 0;
 }
 
 int main()
@@ -373,12 +416,15 @@ int main()
 	SetConsoleOutputCP(1251);
 	structForThread myStruct;
 	std::vector<HANDLE> handleVec;
-	HANDLE hThread;
 	DWORD myThreadID;
-	myStruct.stop = true;
-	hThread = CreateThread(0, 0, threadFunc, &myStruct, 0, &myThreadID);
-	if(hThread)
-		CloseHandle(hThread);
+	for (int i = 0; i < 3; i++)
+	{
+		Sleep(100);
+		myStruct.index++;
+		handleVec.push_back(CreateThread(0, 0, threadFunc, &myStruct, 0, &myThreadID));
+		if (!handleVec[i])
+			std::cout << "Erorr: Stream creation error" << std::endl;
+	}
 	SYSTEMTIME timeBefore, timeAfter;
 	std::ifstream in("Catalog.csv");
 	if (!in.is_open())
@@ -424,6 +470,8 @@ int main()
 		}
 		if (fieldsQuantity > 8)
 			continue;
+		if (fieldsQuantity < 1)
+			break;
 		for (int i = 0; i < fieldsQuantity; i++)
 		{
 			std::cout << "Choose search field" << std::endl;
@@ -477,12 +525,16 @@ int main()
 			}
 		}
 		GetLocalTime(&timeBefore);
-		find(vecPtrs, fields, keys);
+		find(vecPtrs, fields, keys, myStruct);
 		GetLocalTime(&timeAfter);
 		std::cout << "Search time in ms: " << calcSearchTime(timeBefore, timeAfter) << std::endl;
 		keys.clear();
 		for (int i = 0; i < 8; i++)
 			fields[i] = 0;
 	}
+	myStruct.stopThread = true;
+	for (int i = 0; i < 3; i++)
+		CloseHandle(handleVec[i]);
 	in.close();
+	return 0;
 }
