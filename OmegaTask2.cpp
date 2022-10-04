@@ -4,15 +4,15 @@
 #include <mutex>
 
 std::vector<MyProduct*> foundObjects;
-std::atomic<bool> performFunction;
 std::mutex myMutex;
 
 struct structForThread
 {
 	std::vector<std::string> keys;
 	int index = 0, fields[8] = {0}, left = 0, right = 0;
-	bool stopThread = false;
-	bool passedVector[3];
+	std::atomic<bool> passedVector[3];
+	std::atomic<bool> performFunction = false;
+	std::atomic<bool>stopThread = false;
 	std::vector<MyProduct*> objectsForFound;
 };
 
@@ -273,25 +273,22 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 		}
 		case 2:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->category, tempKey))
+			std::string tempStr (productItem->category);
+			if (!tempStr.find(keys[i]), 0)
 				return false;
 			break;
 		}
 		case 3:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->subcategory2, tempKey))
+			std::string tempStr(productItem->subcategory2);
+			if (!tempStr.find(keys[i]), 0)
 				return false;
 			break;
 		}
 		case 4:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->subcategory3, tempKey))
+			std::string tempStr(productItem->subcategory3);
+			if (!tempStr.find(keys[i]), 0)
 				return false;
 			break;
 		}
@@ -305,9 +302,8 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 		}
 		case 6:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->name, tempKey))
+			std::string tempStr(productItem->name);
+			if (!tempStr.find(keys[i]), 0)
 				return false;
 			break;
 		}
@@ -349,7 +345,7 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 	myStruct.keys = keys;
 	for(int i = 0; i < 8; i++)
 		myStruct.fields[i] = fields[i];
-	performFunction = true;
+	myStruct.performFunction = true;
 	for (int i = left; i <= right; i += 4)
 	{
 		if (i + 4 >= right)
@@ -363,25 +359,27 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 		myMutex.lock();
 		if (foundObjects.size() >= 10)
 		{
-			performFunction = false;
 			myMutex.unlock();
+			myStruct.performFunction = false;
 			break;
 		}
 		myMutex.unlock();
 	}
-	while (performFunction && whileStop != 3)
+	while (whileStop != 3)
 	{
+		if (!myStruct.performFunction)
+			break;
 		whileStop = 0;
 		for (int i = 0; i < 3; i++)
 		{
-			myMutex.lock();
 			if (myStruct.passedVector[i])
 				whileStop++;
-			myMutex.unlock();
 		}
 	}
-	performFunction = false;
-	std::sort(foundObjects.begin(), foundObjects.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+	myStruct.performFunction = false;
+	myMutex.lock();
+	if(foundObjects.size())
+		std::sort(foundObjects.begin(), foundObjects.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
 	for (unsigned int i = 0; i < foundObjects.size(); i++)
 	{
 		std::cout << foundObjects[i] << std::endl;
@@ -397,24 +395,24 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 	foundObjects.clear();
 	for (int i = 0; i < 3; i++)
 		myStruct.passedVector[i] = false;
+	myMutex.unlock();
 }
 
 DWORD WINAPI threadFunc(LPVOID myStruct)
 {
 	int index = (*(structForThread*)myStruct).index;
+	bool performFunctionCopy;
 	(*(structForThread*)myStruct).passedVector[index - 1] = false;
-	structForThread myStructCopy = *(structForThread*)myStruct;
 	while (true)
 	{
-		myMutex.lock();
 		if ((*(structForThread*)myStruct).stopThread)
 			break;
-		myMutex.unlock();
-		if (performFunction && (*(structForThread*)myStruct).passedVector[index - 1] == false)
+		if ((*(structForThread*)myStruct).performFunction && (*(structForThread*)myStruct).passedVector[index - 1] == false)
 		{
+			if ((*(structForThread*)myStruct).right < (*(structForThread*)myStruct).left + index)
+				(*(structForThread*)myStruct).passedVector[index - 1] = true;
 			for (int i = (*(structForThread*)myStruct).left + index; i <= (*(structForThread*)myStruct).right; i += 4)
 			{
-				//std::cout << i << std::endl;
 				if (myCompare((*(structForThread*)myStruct).objectsForFound[i], (*(structForThread*)myStruct).fields, (*(structForThread*)myStruct).keys))
 				{
 					myMutex.lock();
@@ -424,16 +422,14 @@ DWORD WINAPI threadFunc(LPVOID myStruct)
 				myMutex.lock();
 				if (foundObjects.size() >= 10)
 				{
-					performFunction = false;
+					(*(structForThread*)myStruct).performFunction = false;
 					myMutex.unlock();
 					break;
 				}
 				myMutex.unlock();
 				if (i + 4 > (*(structForThread*)myStruct).right)
 				{
-					myMutex.lock();
 					(*(structForThread*)myStruct).passedVector[index - 1] = true;
-					myMutex.unlock();
 					break;
 				}
 			}
@@ -564,9 +560,7 @@ int main()
 		for (int i = 0; i < 8; i++)
 			fields[i] = 0;
 	}
-	myMutex.lock();
 	myStruct.stopThread = true;
-	myMutex.unlock();
 	for (int i = 0; i < 3; i++)
 		CloseHandle(handleVec[i]);
 	in.close();
