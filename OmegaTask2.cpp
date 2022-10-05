@@ -4,16 +4,19 @@
 #include <mutex>
 
 std::vector<MyProduct*> foundObjects;
-std::mutex myMutex;
+CRITICAL_SECTION lpCriticalSection;
 
 struct structForThread
 {
-	std::vector<std::string> keys;
-	int index = 0, fields[8] = {0}, left = 0, right = 0;
-	std::atomic<bool> passedVector[3];
-	std::atomic<bool> performFunction = false;
-	std::atomic<bool>stopThread = false;
+	std::string keys[8];
+	int keysInt[8] = { 0 };
+	double keysDouble[8] = { 0 };
+	volatile int index = 0, left = 0, right = 0;
+	int fields[8] = { 0 };
+	volatile std::atomic<bool> passedVector[3];
+	volatile std::atomic<bool>stopThread = false;
 	std::vector<MyProduct*> objectsForFound;
+	std::vector<std::vector<MyProduct*>> foundObjectsThread;
 };
 
 int calcSearchTime(SYSTEMTIME timeBefore, SYSTEMTIME timeAfter)
@@ -35,10 +38,8 @@ int calcSearchTime(SYSTEMTIME timeBefore, SYSTEMTIME timeAfter)
 	return timeAfter.wMilliseconds + timeAfter.wSecond * 1000 + timeAfter.wMinute * 1000 * 60;
 }
 
-void findBorders(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBorder, std::string key, int field)
+void findBordersInt(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBorder, int field, int keyInt)
 {
-	char keyChar[255];
-	strcpy_s(keyChar, key.c_str());
 	int mid = 0, left = leftBorder, right = rightBorder;
 	while (leftBorder < rightBorder)
 	{
@@ -47,74 +48,26 @@ void findBorders(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBord
 		{
 		case 1:
 		{
-			if (atoi(vecPtr[mid]->number) >= atoi(keyChar))
+			if (vecPtr[mid]->number >= keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->number) < atoi(keyChar))
-					leftBorder = mid + 1;
-			break;
-		}
-		case 2:
-		{
-			if (strcmp(vecPtr[mid]->category, keyChar) >= 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->category, keyChar) < 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 3:
-		{
-			if (strcmp(vecPtr[mid]->subcategory2, keyChar) >= 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->subcategory2, keyChar) < 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 4:
-		{
-			if (strcmp(vecPtr[mid]->subcategory3, keyChar) >= 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->subcategory3, keyChar) < 0)
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		case 5:
 		{
-			if (atoi(vecPtr[mid]->vendorCode) >= atoi(keyChar))
+			if (vecPtr[mid]->vendorCode >= keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->vendorCode) < atoi(keyChar))
-					leftBorder = mid + 1;
-			break;
-		}
-		case 6:
-		{
-			if (strcmp(vecPtr[mid]->name, keyChar) >= 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->name, keyChar) < 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 7:
-		{
-			if (atof(vecPtr[mid]->price) >= atof(keyChar))
-				rightBorder = mid - 1;
-			else
-				if (atof(vecPtr[mid]->price) < atof(keyChar))
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		case 8:
 		{
-			if (atoi(vecPtr[mid]->quantity) >= atoi(keyChar))
+			if (vecPtr[mid]->quantity >= keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->quantity) < atoi(keyChar))
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		}
@@ -132,77 +85,60 @@ void findBorders(std::vector<MyProduct*> vecPtr, int &leftBorder, int &rightBord
 		{
 		case 1:
 		{
-			if (atoi(vecPtr[mid]->number) > atoi(keyChar))
+			if (vecPtr[mid]->number > keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->number) <= atoi(keyChar))
-					leftBorder = mid + 1;
-			break;
-		}
-		case 2:
-		{
-			if (strcmp(vecPtr[mid]->category, keyChar) > 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->category, keyChar) <= 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 3:
-		{
-			if (strcmp(vecPtr[mid]->subcategory2, keyChar) > 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->subcategory2, keyChar) <= 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 4:
-		{
-			if (strcmp(vecPtr[mid]->subcategory3, keyChar) > 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->subcategory3, keyChar) <= 0)
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		case 5:
 		{
-			if (atoi(vecPtr[mid]->vendorCode) > atoi(keyChar))
+			if (vecPtr[mid]->vendorCode > keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->vendorCode) <= atoi(keyChar))
-					leftBorder = mid + 1;
-			break;
-		}
-		case 6:
-		{
-			if (strcmp(vecPtr[mid]->name, keyChar) > 0)
-				rightBorder = mid - 1;
-			else
-				if (strcmp(vecPtr[mid]->name, keyChar) <= 0)
-					leftBorder = mid + 1;
-			break;
-		}
-		case 7:
-		{
-			if (atof(vecPtr[mid]->price) > atof(keyChar))
-				rightBorder = mid - 1;
-			else
-				if (atof(vecPtr[mid]->price)<= atof(keyChar))
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		case 8:
 		{
-			if (atoi(vecPtr[mid]->quantity) > atoi(keyChar))
+			if (vecPtr[mid]->quantity > keyInt)
 				rightBorder = mid - 1;
 			else
-				if (atoi(vecPtr[mid]->quantity) <= atoi(keyChar))
-					leftBorder = mid + 1;
+				leftBorder = mid + 1;
 			break;
 		}
 		}
+	}
+	leftBorder = left;
+	return;
+}
+
+void findBordersDouble(std::vector<MyProduct*> vecPtr, int& leftBorder, int& rightBorder, double keyDouble)
+{
+	int mid = 0, left = leftBorder, right = rightBorder;
+	while (leftBorder < rightBorder)
+	{
+		mid = (leftBorder + rightBorder) / 2;
+		if (vecPtr[mid]->price >= keyDouble)
+			rightBorder = mid - 1;
+		else
+			leftBorder = mid + 1;
+		break;
+	}
+
+	mid = (left + right) / 2;
+	left = leftBorder;
+	leftBorder = 0;
+	rightBorder = vecPtr.size();
+
+	while (leftBorder < rightBorder)
+	{
+		mid = (leftBorder + rightBorder) / 2;
+		if (vecPtr[mid]->price > keyDouble)
+			rightBorder = mid - 1;
+		else
+			leftBorder = mid + 1;
+		break;
 	}
 	leftBorder = left;
 	return;
@@ -214,49 +150,50 @@ void mySort(std::vector<MyProduct*> &vecPtr, int fieldNumber)
 	{
 	case 1:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 		break;
 	}
 	case 2:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 		break;
 	}
 	case 3:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 		break;
 	}
 	case 4:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 		break;
 	}
 	case 5:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->vendorCode) < atoi(b->vendorCode); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->vendorCode < b->vendorCode; });
 		break;
 	}
 	case 6:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 		break;
 	}
 	case 7:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atof(a->price) < atof(b->price); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->price < b->price; });
 		break;
 	}
 	case 8:
 	{
-		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->quantity) < atoi(b->quantity); });
+		std::sort(vecPtr.begin(), vecPtr.end(), [](MyProduct* a, MyProduct* b) {return a->quantity < b->quantity; });
 		break;
 	}
 	}
 }
 
-bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> keys)
+bool myCompare(MyProduct* productItem, int fields[8], std::string keys[8], double keyDouble[8], int keyInt[8])
 {
+	int iInt = 0, iDouble = 0, iStr = 0;
 	for (int i = 0; i < 8; i++)
 	{
 		if (!fields[i])
@@ -265,62 +202,66 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 		{
 		case 1:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->number, tempKey))
+			if (productItem->number != keyInt[iInt])
 				return false;
+			iInt++;
 			break;
 		}
 		case 2:
 		{
 			std::string tempStr (productItem->category);
-			if (!tempStr.find(keys[i]), 0)
+			int tempInt = tempStr.find(keys[iStr]);
+			if (tempInt < 0)
 				return false;
+			iStr++;
 			break;
 		}
 		case 3:
 		{
 			std::string tempStr(productItem->subcategory2);
-			if (!tempStr.find(keys[i]), 0)
+			int tempInt = tempStr.find(keys[iStr]);
+			if (tempInt < 0)
 				return false;
+			iStr++;
 			break;
 		}
 		case 4:
 		{
 			std::string tempStr(productItem->subcategory3);
-			if (!tempStr.find(keys[i]), 0)
+			int tempInt = tempStr.find(keys[iStr]);
+			if (tempInt < 0)
 				return false;
+			iStr++;
 			break;
 		}
 		case 5:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->vendorCode, tempKey))
+			if (productItem->vendorCode != keyInt[iInt])
 				return false;
+			iInt++;
 			break;
 		}
 		case 6:
 		{
 			std::string tempStr(productItem->name);
-			if (!tempStr.find(keys[i]), 0)
+			int tempInt = tempStr.find(keys[iStr]);
+			if (tempInt < 0)
 				return false;
+			iStr++;
 			break;
 		}
 		case 7:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->price, tempKey))
+			if (productItem->price != keyDouble[iDouble])
 				return false;
+			iDouble++;
 			break;
 		}
 		case 8:
 		{
-			char tempKey[255];
-			strcpy_s(tempKey, keys[i].c_str());
-			if (strcmp(productItem->quantity, tempKey))
+			if (productItem->quantity != keyInt[iInt])
 				return false;
+			iInt++;
 			break;
 		}
 		}
@@ -328,47 +269,48 @@ bool myCompare(MyProduct* productItem, int fields[8], std::vector<std::string> k
 	return true;
 }
 
-void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vector<std::string> keys, structForThread &myStruct)
+void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::string keys[8], double keysDouble[8], int keysInt[8], structForThread& myStruct)
 {
+	std::vector<MyProduct*> threadVec;
+	EnterCriticalSection(&lpCriticalSection);
+	foundObjects.clear();
+	myStruct.foundObjectsThread.clear();
 	char key[255];
+	int keyInt = 0;
+	double keyDouble = 0;
 	strcpy_s(key, keys[0].c_str());
-	int left = 0, right = vecPtrs[0].size(), quantityOfProducts = 0;
-	int whileStop = 0;
-	if (fields[0] == 1 || fields[0] == 5 || fields[0] == 7 || fields[0] == 8)
-		findBorders(vecPtrs[fields[0] - 1], left, right, keys[0], fields[0]);
+	int left = 0, right = vecPtrs[0].size(), quantityOfProducts = 0, whileStop = 0;
+	if (fields[0] == 1 || fields[0] == 5 || fields[0] == 8)
+		findBordersInt(vecPtrs[fields[0] - 1], left, right, fields[0], keysInt[0]);
+	if (fields[0] == 7)
+		findBordersDouble(vecPtrs[fields[0] - 1], left, right, keysDouble[0]);
 	std::cout << "----------------------------------------------------------" << std::endl;
 	myStruct.objectsForFound = vecPtrs[fields[0] - 1];
 	myStruct.left = left;
 	if (right == vecPtrs[fields[0] - 1].size())
 		right--;
 	myStruct.right = right;
-	myStruct.keys = keys;
-	for(int i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
+	{
 		myStruct.fields[i] = fields[i];
-	myStruct.performFunction = true;
+		myStruct.keys[i] = keys[i];
+		myStruct.keysDouble[i] = keysDouble[i];
+		myStruct.keysInt[i] = keysInt[i];
+	}
+	for (int i = 0; i < 3; i++)
+		myStruct.passedVector[i] = false;
+	LeaveCriticalSection(&lpCriticalSection);
 	for (int i = left; i <= right; i += 4)
 	{
-		if (i + 4 >= right)
-			int a = 0;
-		if (myCompare(vecPtrs[fields[0] - 1][i], fields, keys))
+		if (myCompare(vecPtrs[fields[0] - 1][i], fields, keys, keysDouble, keysInt))
 		{
-			myMutex.lock();
-			foundObjects.push_back(vecPtrs[fields[0] - 1][i]);
-			myMutex.unlock();
+			EnterCriticalSection(&lpCriticalSection);
+			threadVec.push_back(vecPtrs[fields[0] - 1][i]);
+			LeaveCriticalSection(&lpCriticalSection);
 		}
-		myMutex.lock();
-		if (foundObjects.size() >= 10)
-		{
-			myMutex.unlock();
-			myStruct.performFunction = false;
-			break;
-		}
-		myMutex.unlock();
 	}
 	while (whileStop != 3)
 	{
-		if (!myStruct.performFunction)
-			break;
 		whileStop = 0;
 		for (int i = 0; i < 3; i++)
 		{
@@ -376,16 +318,23 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 				whileStop++;
 		}
 	}
-	myStruct.performFunction = false;
-	myMutex.lock();
+	for (int i = 0; i < threadVec.size(); i++)
+		foundObjects.push_back(threadVec[i]);
+	for (int i = 0; i < myStruct.foundObjectsThread.size(); i++)
+	{
+		for (int j = 0; j < myStruct.foundObjectsThread[i].size(); j++)
+			foundObjects.push_back(myStruct.foundObjectsThread[i][j]);
+	}
+	EnterCriticalSection(&lpCriticalSection);
 	if(foundObjects.size())
-		std::sort(foundObjects.begin(), foundObjects.end(), [](MyProduct* a, MyProduct* b) {return atoi(a->number) < atoi(b->number); });
+		std::sort(foundObjects.begin(), foundObjects.end(), [](MyProduct* a, MyProduct* b) {return a->number < b->number; });
 	for (unsigned int i = 0; i < foundObjects.size(); i++)
 	{
 		std::cout << foundObjects[i] << std::endl;
-		if (i >= 9)
+		if (i >= 99)
 		{
-			std::cout << "Only 10 products are displayed, the list is not complete!" << std::endl;
+			std::cout << "Only 100 products are displayed, the list is not complete!" << std::endl;
+			std::cout << "Total number of items found: " << foundObjects.size() << std::endl;
 			break;
 		}
 	}
@@ -395,41 +344,42 @@ void find(std::vector<std::vector<MyProduct*>> vecPtrs, int fields[8], std::vect
 	foundObjects.clear();
 	for (int i = 0; i < 3; i++)
 		myStruct.passedVector[i] = false;
-	myMutex.unlock();
+	myStruct.foundObjectsThread.clear();
+	LeaveCriticalSection(&lpCriticalSection);
+	threadVec.clear();
 }
 
 DWORD WINAPI threadFunc(LPVOID myStruct)
 {
+	std::vector<MyProduct*> threadVec;
 	int index = (*(structForThread*)myStruct).index;
-	bool performFunctionCopy;
 	(*(structForThread*)myStruct).passedVector[index - 1] = false;
 	while (true)
 	{
 		if ((*(structForThread*)myStruct).stopThread)
 			break;
-		if ((*(structForThread*)myStruct).performFunction && (*(structForThread*)myStruct).passedVector[index - 1] == false)
+		if ((*(structForThread*)myStruct).passedVector[index - 1] == false)
 		{
 			if ((*(structForThread*)myStruct).right < (*(structForThread*)myStruct).left + index)
 				(*(structForThread*)myStruct).passedVector[index - 1] = true;
 			for (int i = (*(structForThread*)myStruct).left + index; i <= (*(structForThread*)myStruct).right; i += 4)
 			{
-				if (myCompare((*(structForThread*)myStruct).objectsForFound[i], (*(structForThread*)myStruct).fields, (*(structForThread*)myStruct).keys))
+				if (myCompare((*(structForThread*)myStruct).objectsForFound[i], (*(structForThread*)myStruct).fields, (*(structForThread*)myStruct).keys, 
+					(*(structForThread*)myStruct).keysDouble, (*(structForThread*)myStruct).keysInt))
 				{
-					myMutex.lock();
-					foundObjects.push_back((*(structForThread*)myStruct).objectsForFound[i]);
-					myMutex.unlock();
+					EnterCriticalSection(&lpCriticalSection);
+					threadVec.push_back((*(structForThread*)myStruct).objectsForFound[i]);
+					LeaveCriticalSection(&lpCriticalSection);
 				}
-				myMutex.lock();
-				if (foundObjects.size() >= 10)
-				{
-					(*(structForThread*)myStruct).performFunction = false;
-					myMutex.unlock();
-					break;
-				}
-				myMutex.unlock();
+				EnterCriticalSection(&lpCriticalSection);
+				LeaveCriticalSection(&lpCriticalSection);
 				if (i + 4 > (*(structForThread*)myStruct).right)
 				{
+					EnterCriticalSection(&lpCriticalSection);
+					(*(structForThread*)myStruct).foundObjectsThread.push_back(threadVec);
+					threadVec.clear();
 					(*(structForThread*)myStruct).passedVector[index - 1] = true;
+					LeaveCriticalSection(&lpCriticalSection);
 					break;
 				}
 			}
@@ -441,7 +391,8 @@ DWORD WINAPI threadFunc(LPVOID myStruct)
 int main()
 {
 	SetConsoleCP(1251);
-	SetConsoleOutputCP(1251);
+	SetConsoleOutputCP(1251); 
+	InitializeCriticalSection(&lpCriticalSection);
 	structForThread myStruct;
 	std::vector<HANDLE> handleVec;
 	DWORD myThreadID;
@@ -483,7 +434,9 @@ int main()
 	int fieldNumber = 9, fieldsQuantity = 1, fields[8];
 	for (int i = 0; i < 8; i++)
 		fields[i] = 0;
-	std::vector <std::string> keys;
+	std::string keys[8] = { "\0" };
+	double keysDouble[8] = { 0 };
+	int keysInt[8] = { 0 };
 	while (fieldsQuantity)
 	{
 		std::cout << "Enter the number of fields to search" << std::endl;
@@ -515,6 +468,7 @@ int main()
 			std::cin >> fieldNumber;
 			if (!std::cin)
 			{
+				i--;
 				std::cin.clear();
 				std::cin.ignore(INT_MAX, '\n');
 				fieldNumber = 9;
@@ -529,8 +483,41 @@ int main()
 				char keyChar[255];
 				std::cout << "Enter substring" << std::endl;
 				std::cin.getline(keyChar, 255, '\n');
-				std::string key = std::string(keyChar);
-				keys.push_back(key);
+				if (fieldNumber == 1 || fieldNumber == 5 || fieldNumber == 8)
+				{
+					int i2 = 0;
+					while (keysInt[i2] != 0)
+						i2++;
+					keysInt[i2] = std::atoi(keyChar);
+				}
+				else
+					if (fieldNumber == 7)
+					{
+						int i2 = 0;
+						while (keysDouble[i2] != 0)
+							i2++;
+						keysDouble[i2] = std::atof(keyChar);
+					}
+					else
+					{
+						int i2 = 0;
+						char tempStr[255];
+						while (true)
+						{
+							strcpy_s(tempStr, keys[i2].c_str());
+							if (!strcmp(tempStr, "\0"))
+								break;
+							i2++;
+						}
+						keysDouble[i2] = std::atof(keyChar);
+						std::string key = std::string(keyChar);
+						keys[i2] = key;
+					}
+			}
+			else
+			{
+				i--;
+				continue;
 			}
 			fields[i] = fieldNumber;
 			if (fieldNumber == 1 || fieldNumber == 5 || fieldNumber == 7 || fieldNumber == 8)
@@ -547,18 +534,25 @@ int main()
 						tempString = keys[i];
 						keys[i] = keys[i2];
 						keys[i2] = tempString;
+						for (int i3 = 0; i3 < 6; i3++)
+							keys[i3] = keys[i3 + 1];
+						keys[7] = "\0";
 						break;
 					}
 				}
 			}
 		}
 		GetLocalTime(&timeBefore);
-		find(vecPtrs, fields, keys, myStruct);
+		find(vecPtrs, fields, keys, keysDouble, keysInt, myStruct);
 		GetLocalTime(&timeAfter);
 		std::cout << "Search time in ms: " << calcSearchTime(timeBefore, timeAfter) << std::endl;
-		keys.clear();
 		for (int i = 0; i < 8; i++)
+		{
 			fields[i] = 0;
+			keys[i] = '\0';
+			keysInt[i] = 0;
+			keysDouble[i] = 0;
+		}
 	}
 	myStruct.stopThread = true;
 	for (int i = 0; i < 3; i++)
